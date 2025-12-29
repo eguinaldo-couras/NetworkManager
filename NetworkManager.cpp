@@ -73,13 +73,23 @@ bool NetworkController::connectEthernet()
     return false;
   }
   
-  delay(1000);
-  ethernetConnected = Ethernet.connected();
+  Serial.print("[Network] Waiting for Ethernet IP");
+  uint32_t startTime = millis();
+  while (Ethernet.localIP() == IPAddress(0, 0, 0, 0) && (millis() - startTime) < 15000) {
+    delay(500);
+    Serial.print(".");
+    Ethernet.maintain();
+  }
+  Serial.println();
+  
+  IPAddress ip = Ethernet.localIP();
+  ethernetConnected = (Ethernet.connected() && ip != IPAddress(0, 0, 0, 0));
+  
   if (ethernetConnected) {
     Serial.print("[Network] Ethernet IP: ");
-    Serial.println(Ethernet.localIP());
+    Serial.println(ip);
   } else {
-    Serial.println("[Network] Ethernet connection failed");
+    Serial.println("[Network] Ethernet connection failed - no valid IP received");
   }
   return ethernetConnected;
 }
@@ -179,12 +189,13 @@ void NetworkController::stopConfigPortal()
 void NetworkController::update()
 {
   bool currentWifiConnected = WiFi.isConnected();
-  bool currentEthernetConnected = Ethernet.connected();
+  IPAddress ethernetIP = Ethernet.localIP();
+  bool currentEthernetConnected = Ethernet.connected() && (ethernetIP != IPAddress(0, 0, 0, 0));
   
   if (!lastEthernetState && currentEthernetConnected) {
     Serial.println("[Network] Ethernet cable connected!");
     Serial.print("[Network] Ethernet IP: ");
-    Serial.println(Ethernet.localIP());
+    Serial.println(ethernetIP);
     
     if (currentWifiConnected) {
       Serial.println("[Network] Disconnecting WiFi due to Ethernet connection");
@@ -195,6 +206,10 @@ void NetworkController::update()
     if (configPortalActive) {
       stopConfigPortal();
     }
+  }
+  
+  if (!lastEthernetState && Ethernet.linkStatus() == LinkON && ethernetIP == IPAddress(0, 0, 0, 0)) {
+    Serial.println("[Network] Ethernet cable detected, waiting for IP...");
   }
   
   if (lastEthernetState && !currentEthernetConnected) {
@@ -303,7 +318,8 @@ bool NetworkController::isWiFiConnected() const
 
 bool NetworkController::isEthernetConnected() const
 {
-  return ethernetConnected && Ethernet.connected();
+  IPAddress ip = Ethernet.localIP();
+  return ethernetConnected && Ethernet.connected() && (ip != IPAddress(0, 0, 0, 0));
 }
 
 bool NetworkController::isAnyConnected() const
