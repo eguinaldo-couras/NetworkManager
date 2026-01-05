@@ -1,7 +1,7 @@
 #include <NetworkManager.h>
 #include <EthernetESP32.h>
 
-NetworkController::NetworkController(W5500Driver& w5500, const char* hostname, const char* portalAPName)
+NetworkController::NetworkController(W5500Driver& w5500, const char* hostname)
   : w5500(w5500)
   , hostname(hostname)
   , wifiManager()
@@ -12,14 +12,8 @@ NetworkController::NetworkController(W5500Driver& w5500, const char* hostname, c
   , lastEthernetState(false)
   , lastReconnectAttempt(0)
   , configPortalStartTime(0)
-  , wifiSSID("")
-  , wifiPassword("")
-  , portalAPName(portalAPName ? String(portalAPName) : String("Robotine_Config"))
-  , portalAPIP(IPAddress(192,168,4,1))
-  , portalAPGateway(IPAddress(192,168,4,1))
-  , portalAPNetmask(IPAddress(255,255,255,0))
-  , wifiTimeout(DEFAULT_WIFI_TIMEOUT)
-  , configPortalTimeout(DEFAULT_CONFIG_PORTAL_TIMEOUT)
+  , wifiSSID(nullptr)
+  , wifiPassword(nullptr)
 {
   wifiManager.setHostname(hostname);
   wifiManager.setDarkMode(true);
@@ -29,8 +23,8 @@ NetworkController::NetworkController(W5500Driver& w5500, const char* hostname, c
 
 void NetworkController::start(const char* WIFISSID, const char* WIFIPASSWORD)
 {
-  wifiSSID = WIFISSID ? String(WIFISSID) : String();
-  wifiPassword = WIFIPASSWORD ? String(WIFIPASSWORD) : String();
+  wifiSSID = WIFISSID;
+  wifiPassword = WIFIPASSWORD;
   
   Serial.println("[Network] Starting network initialization...");
   
@@ -49,8 +43,8 @@ void NetworkController::start(const char* WIFISSID, const char* WIFIPASSWORD)
     return;
   }
   
-  if (wifiSSID.length() > 0 && wifiPassword.length() > 0) {
-    if (connectWiFi(wifiSSID.c_str(), wifiPassword.c_str())) {
+  if (wifiSSID && wifiPassword && strlen(wifiSSID) > 0) {
+    if (connectWiFi(wifiSSID, wifiPassword)) {
       Serial.println("[Network] WiFi connected successfully");
       return;
     }
@@ -68,7 +62,7 @@ bool NetworkController::connectEthernet()
   Ethernet.setHostname(hostname);
   Ethernet.init(w5500);
   Ethernet.begin(5000);
-
+  
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
     Serial.println("[Network] Ethernet hardware not found");
     return false;
@@ -81,11 +75,10 @@ bool NetworkController::connectEthernet()
   
   Serial.print("[Network] Waiting for Ethernet IP");
   uint32_t startTime = millis();
-  while (Ethernet.localIP() == IPAddress(0, 0, 0, 0) && (millis() - startTime) < wifiTimeout) {
-    delay(50);
+  while (Ethernet.localIP() == IPAddress(0, 0, 0, 0) && (millis() - startTime) < 15000) {
+    delay(500);
     Serial.print(".");
     Ethernet.maintain();
-    yield();
   }
   Serial.println();
   
@@ -109,16 +102,15 @@ bool NetworkController::connectWiFi(const char* ssid, const char* password)
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
-
+  
   WiFi.setHostname(hostname);
   WiFi.begin(ssid, password);
-
+  
   Serial.print("[Network] Waiting for WiFi connection");
   uint32_t startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < wifiTimeout) {
+  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < WIFI_TIMEOUT) {
     Serial.print(".");
-    delay(50);
-    yield();
+    delay(500);
   }
   Serial.println();
   
@@ -139,16 +131,15 @@ bool NetworkController::connectWiFiStored()
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
-
+  
   WiFi.setHostname(hostname);
   WiFi.begin();
-
+  
   Serial.print("[Network] Waiting for WiFi connection (stored)");
   uint32_t startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < wifiTimeout) {
+  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < WIFI_TIMEOUT) {
     Serial.print(".");
-    delay(50);
-    yield();
+    delay(500);
   }
   Serial.println();
   
@@ -168,13 +159,12 @@ void NetworkController::startConfigPortal()
     Serial.println("[Network] Starting WiFi configuration portal...");
     WiFi.mode(WIFI_AP_STA);
     wifiManager.setConfigPortalTimeout(0);
-    wifiManager.setAPStaticIPConfig(portalAPIP, portalAPGateway, portalAPNetmask);
-    wifiManager.startConfigPortal(portalAPName.c_str(), "");
+    wifiManager.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
+    wifiManager.startConfigPortal("Robotine_Config", "");
     configPortalActive = true;
     configPortalStartTime = millis(); 
-    Serial.printf("[Network] Config portal active: %s\n", portalAPName.c_str());
-    Serial.print("[Network] AP IP: ");
-    Serial.println(portalAPIP);
+    Serial.println("[Network] Config portal active: Robotine_Config");
+    Serial.println("[Network] AP IP: 192.168.4.1");
 
     for (int i = 0; i < 10; i++) {
       wifiManager.process();
@@ -225,9 +215,9 @@ void NetworkController::update()
   if (lastEthernetState && !currentEthernetConnected) {
     Serial.println("[Network] Ethernet cable disconnected!");
     
-    if (wifiSSID.length() > 0 && wifiPassword.length() > 0) {
+    if (wifiSSID && wifiPassword && strlen(wifiSSID) > 0) {
       Serial.println("[Network] Attempting to reconnect WiFi...");
-      if (connectWiFi(wifiSSID.c_str(), wifiPassword.c_str())) {
+      if (connectWiFi(wifiSSID, wifiPassword)) {
         Serial.println("[Network] WiFi reconnected successfully");
         currentWifiConnected = true;
       } else {
@@ -267,8 +257,8 @@ void NetworkController::update()
     
     if (wifiConnected) {
       Serial.println("[Network] WiFi connected via portal, closing portal");
-      wifiSSID = "";
-      wifiPassword = "";
+      wifiSSID = nullptr;
+      wifiPassword = nullptr;
       stopConfigPortal();
       WiFi.mode(WIFI_STA);
     }
@@ -278,7 +268,7 @@ void NetworkController::update()
                       ? (now - configPortalStartTime) 
                       : (UINT32_MAX - configPortalStartTime + now);
     
-    if (!currentConnectionState && elapsed > configPortalTimeout) {
+    if (!currentConnectionState && elapsed > CONFIG_PORTAL_TIMEOUT) {
       Serial.println("[Network] Config portal timeout reached");
       stopConfigPortal();
       configPortalStartTime = 0;

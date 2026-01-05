@@ -9,7 +9,7 @@ class W5500Driver;
 
 class NetworkController {
 public:
-  NetworkController(W5500Driver& w5500, const char* hostname, const char* portalAPName = nullptr);
+  NetworkController(W5500Driver& w5500, const char* hostname);
   
   void start(const char* WIFISSID, const char* WIFIPASSWORD);
   
@@ -36,8 +36,8 @@ private:
   uint32_t lastReconnectAttempt;
   uint32_t configPortalStartTime;
 
-  String wifiSSID;
-  String wifiPassword;
+  const char* wifiSSID;
+  const char* wifiPassword;
 
   String portalAPName;
   IPAddress portalAPIP;
@@ -54,8 +54,6 @@ private:
   void stopConfigPortal();
 
   static const uint32_t RECONNECT_INTERVAL = 5000;
-  static const uint32_t DEFAULT_WIFI_TIMEOUT = 15000;
-  static const uint32_t DEFAULT_CONFIG_PORTAL_TIMEOUT = 300000;
 };
 
 #endif 
