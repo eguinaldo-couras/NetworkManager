@@ -15,7 +15,7 @@ NetworkController::NetworkController(W5500Driver& w5500, const char* hostname)
 {
   wifiManager.setHostname(hostname);
   wifiManager.setDarkMode(true);
-  wifiManager.setTitle("Robotine");
+  wifiManager.setTitle(hostname);
   wifiManager.setConfigPortalBlocking(false);
 }
 
@@ -31,9 +31,8 @@ void NetworkController::start()
   }
   
   lastEthernetState = false;
-  Serial.println("[Network] Ethernet not available, trying WiFi...");
 
-  Serial.println("[Network] Trying stored WiFi credentials (if any)...");
+  Serial.println("[Network] Trying stored WiFi credentials...");
   if (connectWiFi()) {
     Serial.println("[Network] WiFi connected successfully using stored credentials");
     return;
@@ -81,7 +80,6 @@ bool NetworkController::connectEthernet()
 
 bool NetworkController::connectWiFi()
 {
-  Serial.println("[Network] Attempting WiFi connection with stored credentials");
   
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -90,7 +88,6 @@ bool NetworkController::connectWiFi()
   WiFi.setHostname(hostname);
   WiFi.begin();
   
-  Serial.print("[Network] Waiting for WiFi connection (stored)");
   uint32_t startTime = millis();
   while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < WIFI_TIMEOUT) {
     delay(500);
@@ -102,7 +99,7 @@ bool NetworkController::connectWiFi()
     Serial.print("[Network] WiFi connected with stored credentials! IP: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println("[Network] WiFi connection timeout (stored credentials)");
+    Serial.println("[Network] WiFi connection timeout");
   }
   return wifiConnected;
 }
@@ -114,10 +111,10 @@ void NetworkController::startConfigPortal()
     WiFi.mode(WIFI_AP_STA);
     wifiManager.setConfigPortalTimeout(0);
     wifiManager.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
-    wifiManager.startConfigPortal("Robotine_Config", "");
+    wifiManager.startConfigPortal(hostname, "");
     configPortalActive = true;
     configPortalStartTime = millis(); 
-    Serial.println("[Network] Config portal active: Robotine_Config");
+    Serial.println("[Network] Config portal active: %s", hostname);
     Serial.println("[Network] AP IP: 192.168.4.1");
 
     for (int i = 0; i < 10; i++) {
