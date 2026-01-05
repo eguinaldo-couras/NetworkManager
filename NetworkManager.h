@@ -11,7 +11,7 @@ class NetworkController {
 public:
   NetworkController(W5500Driver& w5500, const char* hostname);
   
-  void start(const char* WIFISSID, const char* WIFIPASSWORD);
+  void start();
   
   bool isWiFiConnected() const;
   bool isEthernetConnected() const;

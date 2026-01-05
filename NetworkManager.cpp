@@ -164,7 +164,7 @@ void NetworkController::update()
     Serial.println("[Network] Ethernet cable disconnected!");
     
     Serial.println("[Network] No fixed WiFi credentials, trying stored credentials...");
-    if (connectWiFiStored()) {
+    if (connectWiFi()) {
       Serial.println("[Network] WiFi reconnected successfully using stored credentials");
       currentWifiConnected = true;
     } else {
