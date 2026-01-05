@@ -54,6 +54,8 @@ private:
   void stopConfigPortal();
 
   static const uint32_t RECONNECT_INTERVAL = 5000;
+  static const uint32_t WIFI_TIMEOUT = 5000;
+  static const uint32_t CONFIG_PORTAL_TIMEOUT = 12000;
 };
 
 #endif 
