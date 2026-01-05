@@ -12,8 +12,6 @@ NetworkController::NetworkController(W5500Driver& w5500, const char* hostname)
   , lastEthernetState(false)
   , lastReconnectAttempt(0)
   , configPortalStartTime(0)
-  , wifiSSID(nullptr)
-  , wifiPassword(nullptr)
 {
   wifiManager.setHostname(hostname);
   wifiManager.setDarkMode(true);
@@ -21,10 +19,8 @@ NetworkController::NetworkController(W5500Driver& w5500, const char* hostname)
   wifiManager.setConfigPortalBlocking(false);
 }
 
-void NetworkController::start(const char* WIFISSID, const char* WIFIPASSWORD)
+void NetworkController::start()
 {
-  wifiSSID = WIFISSID;
-  wifiPassword = WIFIPASSWORD;
   
   Serial.println("[Network] Starting network initialization...");
   
@@ -38,19 +34,9 @@ void NetworkController::start(const char* WIFISSID, const char* WIFIPASSWORD)
   Serial.println("[Network] Ethernet not available, trying WiFi...");
 
   Serial.println("[Network] Trying stored WiFi credentials (if any)...");
-  if (connectWiFiStored()) {
+  if (connectWiFi()) {
     Serial.println("[Network] WiFi connected successfully using stored credentials");
     return;
-  }
-  
-  if (wifiSSID && wifiPassword && strlen(wifiSSID) > 0) {
-    if (connectWiFi(wifiSSID, wifiPassword)) {
-      Serial.println("[Network] WiFi connected successfully");
-      return;
-    }
-    Serial.println("[Network] WiFi connection failed, starting config portal...");
-  } else {
-    Serial.println("[Network] No WiFi credentials provided, starting config portal...");
   }
   
   startConfigPortal();
@@ -77,7 +63,6 @@ bool NetworkController::connectEthernet()
   uint32_t startTime = millis();
   while (Ethernet.localIP() == IPAddress(0, 0, 0, 0) && (millis() - startTime) < 15000) {
     delay(500);
-    Serial.print(".");
     Ethernet.maintain();
   }
   Serial.println();
@@ -94,37 +79,7 @@ bool NetworkController::connectEthernet()
   return ethernetConnected;
 }
 
-bool NetworkController::connectWiFi(const char* ssid, const char* password)
-{
-  Serial.print("[Network] Attempting WiFi connection to: ");
-  Serial.println(ssid);
-  
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-  
-  WiFi.setHostname(hostname);
-  WiFi.begin(ssid, password);
-  
-  Serial.print("[Network] Waiting for WiFi connection");
-  uint32_t startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < WIFI_TIMEOUT) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println();
-  
-  wifiConnected = (WiFi.status() == WL_CONNECTED);
-  if (wifiConnected) {
-    Serial.print("[Network] WiFi connected! IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("[Network] WiFi connection timeout");
-  }
-  return wifiConnected;
-}
-
-bool NetworkController::connectWiFiStored()
+bool NetworkController::connectWiFi()
 {
   Serial.println("[Network] Attempting WiFi connection with stored credentials");
   
@@ -138,7 +93,6 @@ bool NetworkController::connectWiFiStored()
   Serial.print("[Network] Waiting for WiFi connection (stored)");
   uint32_t startTime = millis();
   while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < WIFI_TIMEOUT) {
-    Serial.print(".");
     delay(500);
   }
   Serial.println();
@@ -191,11 +145,9 @@ void NetworkController::update()
   bool currentWifiConnected = WiFi.isConnected();
   IPAddress ethernetIP = Ethernet.localIP();
   bool currentEthernetConnected = Ethernet.connected() && (ethernetIP != IPAddress(0, 0, 0, 0));
-  
+
   if (!lastEthernetState && currentEthernetConnected) {
     Serial.println("[Network] Ethernet cable connected!");
-    Serial.print("[Network] Ethernet IP: ");
-    Serial.println(ethernetIP);
     
     if (currentWifiConnected) {
       Serial.println("[Network] Disconnecting WiFi due to Ethernet connection");
@@ -208,38 +160,18 @@ void NetworkController::update()
     }
   }
   
-  if (!lastEthernetState && Ethernet.linkStatus() == LinkON && ethernetIP == IPAddress(0, 0, 0, 0)) {
-    Serial.println("[Network] Ethernet cable detected, waiting for IP...");
-  }
-  
   if (lastEthernetState && !currentEthernetConnected) {
     Serial.println("[Network] Ethernet cable disconnected!");
     
-    if (wifiSSID && wifiPassword && strlen(wifiSSID) > 0) {
-      Serial.println("[Network] Attempting to reconnect WiFi...");
-      if (connectWiFi(wifiSSID, wifiPassword)) {
-        Serial.println("[Network] WiFi reconnected successfully");
-        currentWifiConnected = true;
-      } else {
-        Serial.println("[Network] WiFi reconnection with fixed credentials failed, trying stored credentials...");
-        if (connectWiFiStored()) {
-          Serial.println("[Network] WiFi reconnected successfully using stored credentials");
-          currentWifiConnected = true;
-        } else {
-          Serial.println("[Network] WiFi reconnection failed, starting config portal...");
-          startConfigPortal();
-        }
-      }
+    Serial.println("[Network] No fixed WiFi credentials, trying stored credentials...");
+    if (connectWiFiStored()) {
+      Serial.println("[Network] WiFi reconnected successfully using stored credentials");
+      currentWifiConnected = true;
     } else {
-      Serial.println("[Network] No fixed WiFi credentials, trying stored credentials...");
-      if (connectWiFiStored()) {
-        Serial.println("[Network] WiFi reconnected successfully using stored credentials");
-        currentWifiConnected = true;
-      } else {
-        Serial.println("[Network] No WiFi credentials, starting config portal...");
-        startConfigPortal();
-      }
+      Serial.println("[Network] No WiFi credentials, starting config portal...");
+      startConfigPortal();
     }
+    
   }
   
   wifiConnected = currentWifiConnected;
