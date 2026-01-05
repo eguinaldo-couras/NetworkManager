@@ -114,7 +114,7 @@ void NetworkController::startConfigPortal()
     wifiManager.startConfigPortal(hostname, "");
     configPortalActive = true;
     configPortalStartTime = millis(); 
-    Serial.println("[Network] Config portal active: %s", hostname);
+    Serial.println("[Network] Config portal active!");
     Serial.println("[Network] AP IP: 192.168.4.1");
 
     for (int i = 0; i < 10; i++) {
