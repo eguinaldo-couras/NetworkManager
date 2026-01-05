@@ -225,9 +225,9 @@ void NetworkController::update()
   if (lastEthernetState && !currentEthernetConnected) {
     Serial.println("[Network] Ethernet cable disconnected!");
     
-    if (wifiSSID && wifiPassword && strlen(wifiSSID) > 0) {
+    if (wifiSSID.length() > 0 && wifiPassword.length() > 0) {
       Serial.println("[Network] Attempting to reconnect WiFi...");
-      if (connectWiFi(wifiSSID, wifiPassword)) {
+      if (connectWiFi(wifiSSID.c_str(), wifiPassword.c_str())) {
         Serial.println("[Network] WiFi reconnected successfully");
         currentWifiConnected = true;
       } else {
@@ -278,7 +278,7 @@ void NetworkController::update()
                       ? (now - configPortalStartTime) 
                       : (UINT32_MAX - configPortalStartTime + now);
     
-    if (!currentConnectionState && elapsed > CONFIG_PORTAL_TIMEOUT) {
+    if (!currentConnectionState && elapsed > configPortalTimeout) {
       Serial.println("[Network] Config portal timeout reached");
       stopConfigPortal();
       configPortalStartTime = 0;

@@ -9,7 +9,7 @@ class W5500Driver;
 
 class NetworkController {
 public:
-  NetworkController(W5500Driver& w5500, const char* hostname);
+  NetworkController(W5500Driver& w5500, const char* hostname, const char* portalAPName = nullptr);
   
   void start(const char* WIFISSID, const char* WIFIPASSWORD);
   
