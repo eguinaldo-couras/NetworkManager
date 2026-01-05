@@ -26,27 +26,36 @@ private:
   W5500Driver& w5500;
   const char* hostname;
   WiFiManager wifiManager;
-  
+
   bool wifiConnected;
   bool ethernetConnected;
   bool configPortalActive;
   bool lastConnectionState;
   bool lastEthernetState;
-  
+
   uint32_t lastReconnectAttempt;
   uint32_t configPortalStartTime;
-  const char* wifiSSID;
-  const char* wifiPassword;
-  
+
+  String wifiSSID;
+  String wifiPassword;
+
+  String portalAPName;
+  IPAddress portalAPIP;
+  IPAddress portalAPGateway;
+  IPAddress portalAPNetmask;
+
+  uint32_t wifiTimeout;
+  uint32_t configPortalTimeout;
+
   bool connectEthernet();
   bool connectWiFi(const char* ssid, const char* password);
   bool connectWiFiStored();
   void startConfigPortal();
   void stopConfigPortal();
-  
+
   static const uint32_t RECONNECT_INTERVAL = 5000;
-  static const uint32_t WIFI_TIMEOUT = 15000;
-  static const uint32_t CONFIG_PORTAL_TIMEOUT = 300000;
+  static const uint32_t DEFAULT_WIFI_TIMEOUT = 15000;
+  static const uint32_t DEFAULT_CONFIG_PORTAL_TIMEOUT = 300000;
 };
 
 #endif 
